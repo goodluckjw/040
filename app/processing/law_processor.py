@@ -53,7 +53,7 @@ def highlight(text, search_term):
 def get_highlighted_articles(mst, search_term):
     from streamlit import session_state as st_state
     if "stop_search" in st_state and st_state.stop_search:
-        return ""
+        return "", ""
 
     xml_data = get_law_text_by_mst(mst)
     if not xml_data:
@@ -63,6 +63,7 @@ def get_highlighted_articles(mst, search_term):
     articles = tree.findall(".//조문단위")
     search_term_clean = clean(search_term)
     results = []
+    plain_copy = []
 
     for article in articles:
         if "stop_search" in st_state and st_state.stop_search:
@@ -72,18 +73,21 @@ def get_highlighted_articles(mst, search_term):
         항들 = article.findall("항")
         include = False
         항출력들 = []
+        plain_lines = []
 
         for 항 in 항들:
             항번호 = 항.findtext("항번호", "").strip()
             항내용 = 항.findtext("항내용", "") or ""
             호출력들 = []
+            plain호 = []
 
             if search_term_clean in clean(항내용):
                 include = True
 
             for 호 in 항.findall("호"):
+                호번호 = 호.findtext("호번호", "").strip()
                 호내용 = 호.findtext("호내용", "") or ""
-                목출력들 = []
+                plain목 = []
 
                 if search_term_clean in clean(호내용):
                     include = True
@@ -92,14 +96,19 @@ def get_highlighted_articles(mst, search_term):
                     목내용 = 목.findtext("목내용", "") or ""
                     if search_term_clean in clean(목내용):
                         include = True
-                        목출력들.append(f"<div style='text-indent:6em;'>ㆍ{highlight(목내용, search_term)}</div>")
+                        plain목.append(f"      {목내용}")
+                        호출력들.append(f"<div style='text-indent:6.5em;'>{highlight(목내용, search_term)}</div>")
 
-                if 목출력들 or search_term_clean in clean(호내용):
-                    호출력들.append(f"<div style='text-indent:4em;'>- {highlight(호내용, search_term)}</div>" + "".join(목출력들))
+                if search_term_clean in clean(호내용) or plain목:
+                    호출력들.append(f"<div style='text-indent:5.5em;'>{highlight(호내용, search_term)}</div>")
+                    plain호.append(f"    {호내용}")
+                    plain호.extend(plain목)
 
-            항줄 = f"<div style='text-indent:2em;'>{highlight(항내용, search_term)}</div>" + "".join(호출력들)
-            if 항내용.strip() or 호출력들:
-                항출력들.append(항줄)
+            if search_term_clean in clean(항내용) or 호출력들:
+                항block = f"<div style='text-indent:3em; padding-left:3em;'>{highlight(항내용, search_term)}</div>" + "".join(호출력들)
+                항출력들.append(항block)
+                plain_lines.append(f"  {항내용}")
+                plain_lines.extend(plain호)
 
         if search_term_clean in clean(조내용):
             include = True
@@ -108,12 +117,12 @@ def get_highlighted_articles(mst, search_term):
             output = ""
             if 조내용.strip():
                 output += f"<div>{highlight(조내용, search_term)}</div>"
+                plain_lines.insert(0, 조내용)
             output += "".join(항출력들)
             results.append(output)
+            plain_copy.append("\n".join(plain_lines))
 
-# 마지막 return 문 두 개를 이렇게 고쳐줘
-if not results:
-    return "🔍 해당 검색어를 포함한 조문이 없습니다.", ""
+    if not results:
+        return "🔍 해당 검색어를 포함한 조문이 없습니다.", ""
 
-return "".join(results), "\n\n".join(plain_copy)
-
+    return "".join(results), "\n\n".join(plain_copy)
