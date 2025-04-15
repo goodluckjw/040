@@ -57,7 +57,7 @@ def get_highlighted_articles(mst, search_term):
 
     xml_data = get_law_text_by_mst(mst)
     if not xml_data:
-        return "⚠️ 본문을 불러올 수 없습니다."
+        return "⚠️ 본문을 불러올 수 없습니다.", ""
 
     tree = ET.fromstring(xml_data)
     articles = tree.findall(".//조문단위")
@@ -111,4 +111,9 @@ def get_highlighted_articles(mst, search_term):
             output += "".join(항출력들)
             results.append(output)
 
-    return "".join(results) if results else "🔍 해당 검색어를 포함한 조문이 없습니다."
+# 마지막 return 문 두 개를 이렇게 고쳐줘
+if not results:
+    return "🔍 해당 검색어를 포함한 조문이 없습니다.", ""
+
+return "".join(results), "\n\n".join(plain_copy)
+
